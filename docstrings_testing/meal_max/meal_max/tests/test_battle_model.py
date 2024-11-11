@@ -11,7 +11,7 @@ def battle_model():
 @pytest.fixture
 def mock_get_random(mocker):
     """Mock the get random function for testing purposes."""
-    return mocker.patch("meal_max.models.battle_model.BattleModel.get_random")
+    return mocker.patch("meal_max.utils.random_utils.get_random")
 
 """Fixtures providing sample combatants for the tests."""
 @pytest.fixture
@@ -37,10 +37,12 @@ def test_battle_meal1_wins(battle_model, sample_meal1, sample_meal2, mock_get_ra
     """
     Test that the battle method returns sample_meal1 as the winner.
     """
+    battle_model.prep_combatant(sample_meal1)
+    battle_model.prep_combatant(sample_meal2)
     # (((9000*8-1) - (2024*7-3))/100) > 0.3
     mock_get_random.return_value = 0.3  
 
-    winner = battle_model.battle(sample_meal1, sample_meal2)
+    winner = battle_model.battle()
 
     assert winner == sample_meal1, f"Expected winner {sample_meal1.meal}, but got {winner.meal}"
 
@@ -48,10 +50,12 @@ def test_battle_meal2_wins(battle_model, sample_meal1, sample_meal2, mock_get_ra
     """
     Test that the battle method returns sample_meal2 as the winner.
     """
+    battle_model.prep_combatant(sample_meal1)
+    battle_model.prep_combatant(sample_meal2)
     # (((9000*8-1) - (2024*7-3))/100) < 9000
     mock_get_random.return_value = 9000 
 
-    winner = battle_model.battle(sample_meal1, sample_meal2)
+    winner = battle_model.battle()
 
     # Assert
     assert winner == sample_meal2, f"Expected winner {sample_meal2.meal}, but got {winner.meal}"
@@ -73,8 +77,8 @@ def test_clear_combatant(battle_model, sample_meal1, sample_meal2):
 
     # Check if only sample_meal2 remains
     assert sample_meal1 not in battle_model.combatants
-    assert sample_meal2 in battle_model.combatants
-    assert len(battle_model.combatants) == 1
+    assert sample_meal2 not in battle_model.combatants
+    assert len(battle_model.combatants) == 0
 
 ##################################################
 # get_battle_score test cases

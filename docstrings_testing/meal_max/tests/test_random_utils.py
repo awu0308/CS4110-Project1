@@ -3,7 +3,6 @@ import requests
 
 from meal_max.utils.random_utils import get_random
 
-
 RANDOM_NUMBER = 0.42
 
 @pytest.fixture

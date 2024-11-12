@@ -237,7 +237,12 @@ get_battle_score() {
     fi
 }
 
+# Health checks
+check_health
+check_db
+
 # Example usage of each function
+
 create_meal "school lunch" "US" 2.49 "LOW"
 clear_catalog
 create_meal "pizza" "italian" 14.00 "MED"
@@ -255,7 +260,18 @@ get_combatants
 battle
 get_combatants
 clear_combatants
+
+create_meal "Hamburger" "American" 10.59 "MED"
+prep_combatant "Spaghetti"
+prep_combatant "whiskey"
+get_combatants
+battle
+prep_combatant "Hamburger"
+get_combatants
+battle
+
 get_meal_by_id 2
+get_meal_by_id 3
 
 get_leaderboard 
 # get_battle_score "Burger" 10.50 "American" "LOW"

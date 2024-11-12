@@ -88,7 +88,7 @@ def test_create_meal_invalid_difficulty():
 
     # Attempt to create a meal with a difficulty that is not HIGH, MED, or LOW  
     with pytest.raises(ValueError, match="Invalid difficulty level: EASY. Must be 'LOW', 'MED', or 'HIGH'."):
-        create_meal(meal="Meal Name", cuisine="Cuisine", price=10.0, difficulty='invald')
+        create_meal(meal="Meal Name", cuisine="Cuisine", price=10.0, difficulty='EASY')
 
     # Attempt to create a meal with a lower case difficulty
     with pytest.raises(ValueError, match="Invalid difficulty level: high. Must be 'LOW', 'MED', or 'HIGH'."):
@@ -227,7 +227,7 @@ def test_get_leaderboard_win_pct(mock_cursor):
     # Ensure the results are sorted by win percentage
     expected_result = [
         {"id": 1, "meal": "Meal A", "cuisine": "Cuisine A", "price": 20.0, "difficulty": 'MED', "battles": 10, "wins": 10, "win_pct": 100.0},
-        {"id": 2, "meal": "Meal B", "cuisine": "Cuisine B", "price": 30.0, "difficulty": 'HIGH', "battles": 30, "wins": 25, "win_pct": 50.0},
+        {"id": 2, "meal": "Meal B", "cuisine": "Cuisine B", "price": 30.0, "difficulty": 'HIGH', "battles": 30, "wins": 15, "win_pct": 50.0},
         {"id": 3, "meal": "Meal C", "cuisine": "Cuisine C", "price": 10.0, "difficulty": 'LOW', "battles": 20, "wins": 5, "win_pct": 20.0}
     ]
 

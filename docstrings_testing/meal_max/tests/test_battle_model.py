@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 import pytest
 
 from meal_max.models.battle_model import BattleModel
@@ -30,35 +31,93 @@ def sample_meal3():
 def sample_battle(sample_meal1, sample_meal2):
     return [sample_meal1, sample_meal2]
 
+@pytest.fixture
+def mock_cursor(mocker):
+    mock_conn = mocker.Mock()
+    mock_cursor = mocker.Mock()
+
+    # Mock the connection's cursor
+    mock_conn.cursor.return_value = mock_cursor
+    mock_cursor.fetchone.return_value = None  # Default return for queries
+    mock_cursor.fetchall.return_value = []
+    mock_conn.commit.return_value = None
+
+    # Mock the get_db_connection context manager from sql_utils
+    @contextmanager
+    def mock_get_db_connection():
+        yield mock_conn  # Yield the mocked connection object
+
+    mocker.patch('meal_max.models.kitchen_model.get_db_connection', mock_get_db_connection)
+
+    return mock_cursor  # Return the mock cursor so we can set expectations per test
+
 ##################################################
 # battle test cases
 ##################################################
-def test_battle_meal1_wins(battle_model, sample_meal1, sample_meal2, mock_get_random):
+
+def test_battle_win1(battle_model, mock_cursor, mocker, sample_meal1, sample_meal2):
     """
-    Test that the battle method returns sample_meal1 as the winner.
+    Test the `battle` method in `BattleModel` by simulating database interactions and
+   verifying the expected battle outcome.
     """
+    # Configure the mock cursor's behavior to return sample meals
+    mock_cursor.fetchall.return_value = [sample_meal1, sample_meal2]
+
+    # Ensure the fetchone query for update_meal_stats finds an existing meal (not deleted)
+    mock_cursor.fetchone.return_value = (0,)  # Simulate a meal that exists and is not deleted
+    
+    # Mock the random utility to control the battle outcome
+    mock_get_random = mocker.patch("meal_max.utils.random_utils.get_random")
+    mock_get_random.return_value = 0.3  # (((9000*8-1) - (2024*7-3))/100) > 0.3
+    
+    # Prepare the combatants in the battle model
     battle_model.prep_combatant(sample_meal1)
     battle_model.prep_combatant(sample_meal2)
-    # (((9000*8-1) - (2024*7-3))/100) > 0.3
-    mock_get_random.return_value = 0.3  
-
+    
+    # Run the battle
     winner = battle_model.battle()
+    
+    # Assert that the winner is as expected based on the controlled randomness
+    assert winner == sample_meal1.meal, f"Expected winner {sample_meal1.meal}, but got {winner}"
 
-    assert winner == sample_meal1, f"Expected winner {sample_meal1.meal}, but got {winner.meal}"
+    # Determine the expected id for the winner
+    expected_winner_id = sample_meal1.id if winner == sample_meal1 else sample_meal2.id
 
-def test_battle_meal2_wins(battle_model, sample_meal1, sample_meal2, mock_get_random):
+    # Check the UPDATE statement for incrementing battles count for the winner
+    mock_cursor.execute.assert_any_call("UPDATE meals SET battles = battles + 1 WHERE id = ?", (expected_winner_id,))
+
+
+def test_battle_win2(battle_model, mock_cursor, mocker, sample_meal1, sample_meal2):
     """
-    Test that the battle method returns sample_meal2 as the winner.
+    Test the `battle` method in `BattleModel` by simulating database interactions and
+    verifying the expected battle outcome.
     """
+
+    # Configure the mock cursor's behavior to return sample meals
+    mock_cursor.fetchall.return_value = [sample_meal1, sample_meal2]
+
+    # Ensure the fetchone query for update_meal_stats finds an existing meal (not deleted)
+    mock_cursor.fetchone.return_value = (0,)  # Simulate a meal that exists and is not deleted
+    
+    # Mock the random utility to control the battle outcome
+    mock_get_random = mocker.patch("meal_max.utils.random_utils.get_random")
+    mock_get_random.return_value = 9000  # (((9000*8-1) - (2024*7-3))/100) < 9000
+    
+    # Prepare the combatants in the battle model
     battle_model.prep_combatant(sample_meal1)
     battle_model.prep_combatant(sample_meal2)
-    # (((9000*8-1) - (2024*7-3))/100) < 9000
-    mock_get_random.return_value = 9000 
-
+    
+    # Run the battle
     winner = battle_model.battle()
+    
+    # Assert that the winner is as expected based on the controlled randomness
+    assert winner == sample_meal1.meal, f"Expected winner {sample_meal1.meal}, but got {winner}"
 
-    # Assert
-    assert winner == sample_meal2, f"Expected winner {sample_meal2.meal}, but got {winner.meal}"
+    # Determine the expected id for the winner
+    expected_winner_id = sample_meal1.id if winner == sample_meal1 else sample_meal2.id
+
+    # Check the UPDATE statement for incrementing battles count for the winner
+    mock_cursor.execute.assert_any_call("UPDATE meals SET battles = battles + 1 WHERE id = ?", (expected_winner_id,))
 
 
 ##################################################

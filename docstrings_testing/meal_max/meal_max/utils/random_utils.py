@@ -1,48 +1,49 @@
-import logging
+import pytest
 import requests
 
-from meal_max.utils.logger import configure_logger
-
-logger = logging.getLogger(__name__)
-configure_logger(logger)
+from meal_max.utils.random_utils import get_random
 
 
-def get_random() -> float:
-    """
-    Fetches a random 2 decimal float between 0 and 1 from random.org
+RANDOM_NUMBER = 0.42
 
-    Returns:
-        float: the random number from random.org.
+@pytest.fixture
+def mock_random_org(mocker):
+    # Patch the requests.get call
+    # requests.get returns an object, which we have replaced with a mock object
+    mock_response = mocker.Mock()
+    # We are giving that object a text attribute
+    mock_response.text = f"{RANDOM_NUMBER}"
+    mocker.patch("requests.get", return_value=mock_response)
+    return mock_response
 
-    Raises:
-        RuntimeError: if the request to random.org fails or returns an invalid response
-        ValueError: if the response from random.org is not a valid float
-    """
-    url = "https://www.random.org/decimal-fractions/?num=1&dec=2&col=1&format=plain&rnd=new"
 
-    try:
-        # Log the request to random.org
-        logger.info("Fetching random number from %s", url)
+def test_get_random(mock_random_org):
+    """Test retrieving a random number from random.org."""
+    result = get_random()
 
-        response = requests.get(url, timeout=5)
+    # Assert that the result is the mocked random number
+    assert result == RANDOM_NUMBER, f"Expected random number {RANDOM_NUMBER}, but got {result}"
 
-        # Check if the request was successful
-        response.raise_for_status()
+    # Ensure that the correct URL was called
+    requests.get.assert_called_once_with("https://www.random.org/integers/?num=1&min=1&max=100&col=1&base=10&format=plain&rnd=new", timeout=5)
 
-        random_number_str = response.text.strip()
+def test_get_random_request_failure(mocker):
+    """Simulate  a request failure."""
+    mocker.patch("requests.get", side_effect=requests.exceptions.RequestException("Connection error"))
 
-        try:
-            random_number = float(random_number_str)
-        except ValueError:
-            raise ValueError("Invalid response from random.org: %s" % random_number_str)
+    with pytest.raises(RuntimeError, match="Request to random.org failed: Connection error"):
+        get_random()
 
-        logger.info("Received random number: %.3f", random_number)
-        return random_number
+def test_get_random_timeout(mocker):
+    """Simulate  a timeout."""
+    mocker.patch("requests.get", side_effect=requests.exceptions.Timeout)
 
-    except requests.exceptions.Timeout:
-        logger.error("Request to random.org timed out.")
-        raise RuntimeError("Request to random.org timed out.")
+    with pytest.raises(RuntimeError, match="Request to random.org timed out."):
+        get_random()
 
-    except requests.exceptions.RequestException as e:
-        logger.error("Request to random.org failed: %s", e)
-        raise RuntimeError("Request to random.org failed: %s" % e)
+def test_get_random_invalid_response(mock_random_org):
+    """Simulate  an invalid response (non-digit)."""
+    mock_random_org.text = "invalid_response"
+
+    with pytest.raises(ValueError, match="Invalid response from random.org: invalid_response"):
+        get_random()
